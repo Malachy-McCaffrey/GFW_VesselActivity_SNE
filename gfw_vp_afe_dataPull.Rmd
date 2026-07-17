@@ -205,7 +205,7 @@ vp_fv_16 <- vp_id_16 |>
 
 # 2017
 
-vp_fv_17 <- vp_id_16 |> 
+vp_fv_17 <- vp_id_17 |> 
   filter(`Vessel Type` == "FISHING")
 
 # 2018
@@ -477,15 +477,15 @@ gfw_afe_id$`Vessel ID` <-  as.factor(gfw_afe_id$`Vessel ID`)
 
 summary(gfw_vp_id)
 summary(gfw_vp_fv)
-summary(gfw_afe_id) # zeros present in the data
+summary(gfw_afe_id) 
+## zeros present in afe data
+## Other, inconclusive, and passenger vessels in afe: 
+# Hat Trick listed is a fishing yacht. keep
+# Pasque is fishing vessel out of Falmouth according to Marine Traffic. keep
+# Viking Star and Viking Starship are offshore fishing charters out of Montauk, NY. keep.
+# Off The Grid is a fishing yacht... keep
 
-# look at data dist
-
-p <- gfw_afe_id |> 
-  ggplot(aes(x=`Apparent Fishing Hours`)) + geom_histogram(binwidth = 1) + theme_bw()
-p + coord_cartesian(xlim = c(0, 12))
-
-# how to handle one-inflation in data sets?
+#### imposing threshold: remove any records where fishing hours are less than .33 hours (20 mins) ####
 ```
 
 ## Remove vessels
@@ -508,7 +508,7 @@ gfw_vp_orstedVessels <- gfw_vp_id |>
 gfw_vp_fv_sub <- gfw_vp_fv |>
   filter(
     !(`Vessel Name` %in% rmOrsted &
-      `Development Stage` %in% c("Stage 2", "Stage 3"))) # 86293 obs of 135744... 36% of data removed
+      `Development Stage` %in% c("Stage 2", "Stage 3"))) # 88088 obs of 137539... 36% of data removed
 
 gfw_afe_id_sub <- gfw_afe_id |> 
   filter(
@@ -522,7 +522,7 @@ rmCargo <- c("CYGNUS", "SUNNANVIK")
 # remove cargo vessels
 
 gfw_vp_fv_sub <- gfw_vp_fv_sub |> 
-  filter(!`Vessel Name` %in% rmCargo) # 86240 obs
+  filter(!`Vessel Name` %in% rmCargo) # 88035 obs
 
 gfw_afe_id_sub <- gfw_afe_id_sub |> 
   filter(!`Vessel Name` %in% rmCargo) # 20696 obs
@@ -571,6 +571,70 @@ gfw_vp3_fv_sub <- gfw_vp_fv_sub |>
 
 gfw_afe3_id_sub <- gfw_afe_id_sub |> 
   filter(`Development Stage` == "Stage 3")
+```
+
+## more sniff tests - visualization checks
+
+```{r}
+# histograms
+
+gfw_afe_id_sub |> 
+  ggplot(aes(x=`Apparent Fishing Hours`)) + geom_histogram(binwidth = 0.5) + theme_bw()
+
+gfw_vp_fv_sub |> 
+  ggplot(aes(x=`Vessel Presence Hours`)) + geom_histogram(binwidth = 1) + theme_bw()
+
+# how to handle one-inflation in data sets?
+```
+
+```{r}
+# check dist of records by month
+
+gfw_vp_fv_sub |> 
+  ggplot(aes(x = YearMonth)) +
+  geom_bar(fill = "steelblue") +
+  theme_bw()
+
+gfw_afe_id_sub |> 
+  ggplot(aes(x = YearMonth)) +
+  geom_bar(fill = "steelblue") +
+  theme_bw() # why sudden jump in mid/late 2024 and 2025?
+
+# check by dev stage
+
+gfw_vp_fv_sub |> 
+  ggplot(aes(x = `Development Stage`)) +
+  geom_bar(fill = "steelblue") +
+  theme_bw() # steady increase a result of just more general fishing activity over time?
+
+gfw_afe_id_sub |> 
+  ggplot(aes(x = `Development Stage`)) +
+  geom_bar(fill = "steelblue") +
+  theme_bw() # BIG jump in dev stage 3
+```
+
+```{r}
+# check dist of unique vessel IDs by month
+
+IDs_perMonth <- gfw_vp_fv_sub |> 
+  group_by(YearMonth) |> 
+  summarise(unique_id_count = n_distinct(`Vessel ID`))
+
+IDs_perMonth |> 
+  ggplot(aes(x = as.factor(YearMonth), y = unique_id_count)) +
+  geom_col(fill = "steelblue") +
+  theme_bw() # trend seems consistent over time... not seeing any big spikes in later years that should indicate more vessels fishing in the area
+
+# check by dev stage
+
+IDs_perDev <- gfw_vp_fv_sub |> 
+  group_by(`Development Stage`) |> 
+  summarise(unique_id_count = n_distinct(`Vessel ID`))
+
+IDs_perDev |> 
+  ggplot(aes(x = as.factor(`Development Stage`), y = unique_id_count)) +
+  geom_col(fill = "steelblue") +
+  theme_bw() # slight decrease in no. of vessels from stage 1 to 2 then small rebound in 3
 ```
 
 ## Export data sets
