@@ -17,6 +17,8 @@
 # `pip install geopandas` in that environment.
 
 # %%
+
+import os
 import numpy as np
 import pandas as pd
 from scipy import stats
